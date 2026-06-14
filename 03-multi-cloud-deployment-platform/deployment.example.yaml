@@ -1,0 +1,18 @@
+# Multi-Cloud Deployment Platform - example spec.
+# Copy to deployment.yaml and edit. Credentials are NEVER stored here;
+# the orchestrator reads them from each provider's standard env vars.
+app:
+  name: demo-service
+  image: ghcr.io/example/demo-service:1.4.2
+  port: 8080
+  replicas: 2
+
+providers:
+  - name: aws
+    regions: [eu-west-1, us-east-1]
+  - name: gcp
+    regions: [europe-west1]
+
+network:
+  cidr: 10.20.0.0/16
+  public: false   # fail-closed default: private unless explicitly opened

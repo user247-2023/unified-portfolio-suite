@@ -1,0 +1,18 @@
+<!doctype html>
+<!--
+  SOC dashboard shell.
+  Purpose: Vite entry HTML. The API base URL is injected at build time from the
+  VITE_API_URL env var (never hardcoded), so the same build can target different
+  backends.
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI-Powered SOC — SIEM Dashboard</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

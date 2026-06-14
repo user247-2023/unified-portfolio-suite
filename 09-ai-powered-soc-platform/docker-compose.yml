@@ -1,0 +1,38 @@
+# -----------------------------------------------------------------------------
+# AI-Powered SOC Platform - local stack.
+# Purpose: Bring up the ingestion API and the SIEM dashboard together.
+# Note: the ingestion image's build context is THIS directory (the platform
+# root) so the shared lib and service packages are importable in the container.
+# Security trade-off: INGEST_API_KEY comes from .env and is REQUIRED; the API
+# fails closed without it. Dashboard auth (user SSO) belongs at a proxy in front.
+# -----------------------------------------------------------------------------
+services:
+  ingestion:
+    build:
+      context: .
+      dockerfile: services/ingestion/Dockerfile
+    environment:
+      INGEST_API_KEY: ${INGEST_API_KEY:?set INGEST_API_KEY in .env}
+      CORRELATION_WINDOW_SECONDS: ${CORRELATION_WINDOW_SECONDS:-300}
+      BRUTE_FORCE_THRESHOLD: ${BRUTE_FORCE_THRESHOLD:-5}
+      PORT_SCAN_THRESHOLD: ${PORT_SCAN_THRESHOLD:-15}
+      AUTO_ESCALATE_SCORE: ${AUTO_ESCALATE_SCORE:-80}
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/healthz').status==200 else 1)"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  dashboard:
+    build:
+      context: ./dashboard
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+    ports:
+      - "8080:80"
+    depends_on:
+      ingestion:
+        condition: service_healthy

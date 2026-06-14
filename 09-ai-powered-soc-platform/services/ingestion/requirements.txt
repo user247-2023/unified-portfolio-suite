@@ -1,0 +1,6 @@
+# Ingestion service dependencies.
+# The core detection logic (shared/, services/correlation, services/triage) is
+# pure stdlib; only the HTTP edge needs these.
+fastapi>=0.111,<1
+uvicorn[standard]>=0.30,<1
+pydantic>=2.7,<3

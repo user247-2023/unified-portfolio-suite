@@ -1,0 +1,43 @@
+# -----------------------------------------------------------------------------
+# EAMS - local development stack
+# Purpose: Bring up Postgres + API + frontend with one command.
+# Security trade-off: credentials here come from the shell environment / .env,
+# NOT from literals, so this file is safe to commit. Defaults are dev-only.
+# -----------------------------------------------------------------------------
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-eams}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-eams}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-eams}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      NODE_ENV: ${NODE_ENV:-development}
+    ports:
+      - "4000:4000"
+
+  frontend:
+    build: ./frontend
+    depends_on: [api]
+    environment:
+      VITE_API_URL: http://localhost:4000
+    ports:
+      - "5173:5173"
+
+volumes:
+  db_data:

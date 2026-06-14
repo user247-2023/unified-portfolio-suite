@@ -1,0 +1,29 @@
+# -----------------------------------------------------------------------------
+# Network Monitoring Suite - stack.
+# Purpose: collector (Prometheus exporter) + Prometheus + Grafana.
+# Security trade-off: Grafana creds come from .env; the collector's metrics port
+# is only exposed inside the compose network (Prometheus scrapes it internally).
+# -----------------------------------------------------------------------------
+services:
+  collector:
+    build: ./collector
+    env_file: .env
+    expose:
+      - "9100"   # internal only; not published to the host
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    volumes:
+      - ./dashboards/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on: [collector]
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GF_SECURITY_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:?set in .env}
+    ports:
+      - "3000:3000"
+    depends_on: [prometheus]

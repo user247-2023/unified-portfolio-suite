@@ -1,0 +1,93 @@
+# =============================================================================
+# Unified Portfolio Suite - root .gitignore
+# Purpose: Keep secrets, build artifacts, and local tooling state out of git.
+# Security trade-off: We deliberately ignore ALL .env* variants except .env.example
+# so that real credentials can never be committed. Each project documents the
+# variables it needs in its own .env.example.
+# =============================================================================
+
+# ---- Secrets & local config (NEVER commit real values) ----------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+.secrets/
+credentials.json
+service-account*.json
+
+# ---- Node / JavaScript / TypeScript -----------------------------------------
+node_modules/
+dist/
+build/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---- Python -----------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ---- C / C++ / Systems (Project 06) -----------------------------------------
+*.o
+*.obj
+*.a
+*.so
+*.dylib
+*.exe
+*.out
+build/
+
+# ---- Go / Rust (orchestrators, tooling) -------------------------------------
+bin/
+target/
+vendor/
+
+# ---- Terraform / Cloud (Project 03) -----------------------------------------
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+crash.log
+*.tfvars
+!*.tfvars.example
+
+# ---- Containers / orchestration ---------------------------------------------
+*.pid
+docker-compose.override.yml
+
+# ---- Data, logs, and local fixtures -----------------------------------------
+*.log
+logs/
+data/
+*.db
+*.sqlite3
+tmp/
+.cache/
+
+# ---- IDE / OS noise ---------------------------------------------------------
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+
+# ---- Claude Code local state ------------------------------------------------
+.claude/

@@ -1,0 +1,3 @@
+# Collector image dependencies (build context is ./collector).
+prometheus-client>=0.20,<1
+pyyaml>=6.0,<7

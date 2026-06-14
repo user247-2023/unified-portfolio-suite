@@ -1,0 +1,8 @@
+# AI-Powered SOC Platform - aggregate dev dependencies.
+# For local development of all Python services from the project root.
+# (Each service also has its own minimal requirements.txt for its container.)
+fastapi>=0.111,<1
+uvicorn[standard]>=0.30,<1
+pydantic>=2.7,<3
+# Testing (the unit tests themselves use only the stdlib `unittest`).
+pytest>=8.2,<9

@@ -1,0 +1,3 @@
+# Security Research & CTF - analysis tooling dependencies.
+# Intentionally minimal; helpers favor the standard library.
+pwntools>=4.12,<5      # CTF I/O helpers (local/practice targets)
