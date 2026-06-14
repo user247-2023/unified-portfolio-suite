@@ -36,10 +36,18 @@ policy, sharing security work risks being misread.
 # Start a new writeup from the template:
 cp writeups/TEMPLATE.md writeups/2026-some-ctf-challenge.md
 
-# Use a helper:
-pip install -r requirements.txt
-python tools/encoder.py --help
+# Analysis helpers (all stdlib — no install needed):
+python tools/encoder.py b64encode "hello"
+python tools/hashid.py 5f4dcc3b5aa765d61d8327deb882cf99      # -> MD5
+python tools/jwt_tool.py eyJhbGciOiJub25lIn0.eyJzdWIiOiJ4In0.   # decode + flag alg=none
+python tools/xor.py single 1e120d1f...                         # single-byte XOR brute
+
+# Run the tool test suite (stdlib unittest):
+python -m unittest discover -s tests -v
 ```
+
+The `tools/` helpers are dependency-free; `pip install -r requirements.txt`
+only adds `pwntools` for interactive CTF I/O against local/practice targets.
 
 ## Security Considerations
 

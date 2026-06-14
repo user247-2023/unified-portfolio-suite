@@ -40,9 +40,21 @@ pip install -r requirements.txt
 # 2) Index your security docs (local folder):
 python -m assistant index ./my-security-docs
 
-# 3) Ask grounded questions:
-python -m assistant ask "How do we respond to a suspected phishing report?"
+# 3) Ask grounded questions (uses the local model):
+python -m assistant ask "How do we respond to a suspected phishing report?" --docs ./my-security-docs
+
+# Retrieval-only (no model needed) — see which docs ground the answer:
+python -m assistant ask "phishing report" --docs ./my-security-docs --no-model
+
+# Run the offline RAG test suite (pure stdlib — no faiss/ollama needed):
+python -m unittest discover -s tests -v
 ```
+
+The retrieval core ships a dependency-free path: a deterministic hashing
+embedder + cosine-similarity `VectorStore` (`assistant/rag/store.py`) so
+retrieval runs and is tested without faiss or a running model. Swapping in
+`sentence-transformers` later changes one class — the `Retriever` interface is
+identical.
 
 Configuration (model name, Ollama host) is read from environment variables; see
 `.env.example`.

@@ -43,7 +43,15 @@ docker compose up --build
 
 # Produce a sample event (see processing/ for the schema):
 python ingestion/produce_sample.py
+
+# Run the offline core tests (event parsing + batching; pure stdlib):
+python -m unittest discover -s tests -v
 ```
+
+The parse/validate and batching logic lives in `processing/core.py` (pure
+stdlib, unit-tested with an injectable clock for deterministic interval
+flushing). `processor.py` only wires that core to Kafka/ClickHouse, importing
+those clients lazily so the package stays importable without the infrastructure.
 
 ## Security Considerations
 

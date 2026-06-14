@@ -17,6 +17,7 @@ from .rag.pipeline import (
     discover_documents,
     ollama_generate,
 )
+from .rag.store import Retriever
 
 
 @click.group()
@@ -37,13 +38,35 @@ def index(directory: str) -> None:
     click.echo("Embeddings + FAISS persistence run in the full pipeline build.")
 
 
+def _build_retriever(directory: str) -> Retriever:
+    """Index a docs directory with the offline retriever (no model needed)."""
+    retriever = Retriever()
+    for path in discover_documents(directory):
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        retriever.index(chunk_text(text, source=str(path)))
+    return retriever
+
+
 @cli.command()
 @click.argument("question")
-def ask(question: str) -> None:
+@click.option("--docs", type=click.Path(exists=True, file_okay=False),
+              help="Directory of docs to ground the answer in.")
+@click.option("-k", "top_k", default=3, show_default=True,
+              help="Number of context chunks to retrieve.")
+@click.option("--no-model", is_flag=True,
+              help="Retrieve + show context only; skip the local model call.")
+def ask(question: str, docs: str | None, top_k: int, no_model: bool) -> None:
     """Answer QUESTION grounded in retrieved local context."""
-    # In the full pipeline this retrieves top-k chunks from FAISS; the prompt
-    # builder + local model call below are the real, runnable path.
-    contexts: list = []  # populated by retrieval in the full build
+    contexts = _build_retriever(docs).retrieve(question, top_k) if docs else []
+
+    if contexts:
+        click.echo("Retrieved context:")
+        for c in contexts:
+            click.echo(f"  - {c.source}")
+
+    if no_model:
+        return
+
     prompt = build_prompt(question, contexts)
     try:
         click.echo(ollama_generate(prompt))

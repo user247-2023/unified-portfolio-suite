@@ -7,3 +7,4 @@ module here and importing it below.
 
 from . import http_headers  # noqa: F401  (import for side-effect: registration)
 from . import file_permissions  # noqa: F401
+from . import tls_cert  # noqa: F401

@@ -39,6 +39,18 @@ docker compose up --build
 # API → http://localhost:4000   Frontend → http://localhost:5173
 ```
 
+Run the domain test suite — **no install needed** (uses Node's built-in test
+runner against the dependency-free lifecycle domain):
+
+```bash
+cd backend && node --test        # or: npm test
+```
+
+The business rules (lifecycle state machine, RBAC default-deny, append-only
+audit trail) live in `backend/src/domain/assets.mjs` as a pure, framework-free
+module. The Fastify routes wrap that domain — keeping the rules testable without
+spinning up a server or database.
+
 ## Security Considerations
 
 - **Secrets** are read exclusively from environment variables; nothing is

@@ -23,7 +23,10 @@ jobs:
       matrix:
         project:
           - 02-security-audit-toolkit
+          - 03-multi-cloud-deployment-platform
           - 04-local-ai-security-assistant
+          - 05-realtime-log-analytics
+          - 07-network-monitoring-suite
           - 08-security-research-ctf
           - 09-ai-powered-soc-platform
     steps:
@@ -31,18 +34,26 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install
-        working-directory: ${{ matrix.project }}
-        run: |
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          pip install ruff pytest
+      - name: Install dev tooling
+        run: python -m pip install --upgrade pip ruff
       - name: Lint
         working-directory: ${{ matrix.project }}
         run: ruff check . || true
-      - name: Test
+      - name: Test (stdlib unittest — cores are dependency-free)
         working-directory: ${{ matrix.project }}
-        run: pytest -q || true
+        run: python -m unittest discover -s tests -v
+
+  fullstack-project:
+    name: Test (Node) — Enterprise Asset Mgmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Run domain tests (built-in runner, no install)
+        working-directory: 01-enterprise-asset-management/backend
+        run: node --test
 
   systems-project:
     name: Build (C)

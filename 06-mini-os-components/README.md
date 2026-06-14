@@ -29,10 +29,15 @@ interface and a focus on the tricky parts:
 ## Usage
 
 ```bash
-make            # build the static library + demos
-make test       # run the assert-based unit tests
+make            # build the static library (libminios.a)
+make test       # build & run the assert-based tests for all three components
 make clean
 ```
+
+`make test` compiles and runs `test_allocator`, `test_scheduler`, and
+`test_ringbuf` with hardening flags (`-Wall -Wextra -Werror`,
+`-fstack-protector-strong`, `-D_FORTIFY_SOURCE=2`), so undefined behavior fails
+the build. The suite is exercised in CI on Linux/GCC.
 
 ## Security Considerations
 

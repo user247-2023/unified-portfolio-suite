@@ -35,9 +35,17 @@ regions" becomes a manual, error-prone ritual.
 pip install -r requirements.txt
 cp deployment.example.yaml deployment.yaml   # edit to taste
 
-python -m orchestrator plan  --spec deployment.yaml
-python -m orchestrator apply --spec deployment.yaml   # prompts for approval
+python -m orchestrator plan   --spec deployment.yaml            # validate + list targets
+python -m orchestrator render --spec deployment.yaml --out build  # write per-target .tf
+python -m orchestrator apply  --spec deployment.yaml            # prompts for approval
+
+# Run the offline core tests (pure stdlib — no install needed):
+python -m unittest discover -s tests -v
 ```
+
+The core — `spec` (validation), `planner` (target expansion), and `renderer`
+(HCL via stdlib `string.Template`) — has no third-party dependencies; PyYAML is
+imported lazily only to read a spec file, and Click only for the CLI.
 
 Cloud credentials are taken from the standard provider environment variables
 (`AWS_*`, `GOOGLE_APPLICATION_CREDENTIALS`, `ARM_*`) — never from the spec file.

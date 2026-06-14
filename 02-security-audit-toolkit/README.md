@@ -42,9 +42,20 @@ python -m audit_toolkit list
 # Run HTTP security-header check against a site you own
 python -m audit_toolkit run --target https://example.com --check http-headers
 
+# Check TLS certificate expiry for a host you own
+python -m audit_toolkit run --target example.com:443 --check tls-cert --i-am-authorized
+
 # Run all checks and emit JSON (e.g. to fail a CI pipeline on HIGH findings)
-python -m audit_toolkit run --target https://example.com --format json
+python -m audit_toolkit run --target https://example.com --format json --i-am-authorized
+
+# Run the offline test suite (pure stdlib — no install needed):
+python -m unittest discover -s tests -v
 ```
+
+Built-in checks: `http-headers`, `tls-cert`, `file-permissions`. Each check
+exposes a **pure evaluation function** (e.g. `evaluate_headers`,
+`evaluate_validity`) separated from its network/filesystem I/O, so the scoring
+logic is unit-tested offline while `httpx` is only imported when actually scanning.
 
 ## Security Considerations
 

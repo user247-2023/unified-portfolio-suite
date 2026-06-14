@@ -22,9 +22,15 @@ $(LIB): $(OBJ)
 %.o: %.c
 	$(CC) $(CFLAGS) $(INCLUDE) -c $< -o $@
 
+TESTS := test_allocator test_scheduler test_ringbuf
+
 test: $(LIB)
-	$(CC) $(CFLAGS) $(INCLUDE) tests/test_allocator.c $(LIB) -o tests/test_allocator
-	./tests/test_allocator
+	@for t in $(TESTS); do \
+	  echo "== building & running $$t =="; \
+	  $(CC) $(CFLAGS) $(INCLUDE) tests/$$t.c $(LIB) -o tests/$$t || exit 1; \
+	  ./tests/$$t || exit 1; \
+	done
+	@echo "all mini-os tests passed"
 
 clean:
-	rm -f $(OBJ) $(LIB) tests/test_allocator
+	rm -f $(OBJ) $(LIB) $(addprefix tests/,$(TESTS))

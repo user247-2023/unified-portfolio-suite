@@ -2,29 +2,25 @@
 
 Purpose: Discover registered checks and run them against a target, emitting a
 human report or JSON. Enforces an explicit authorization gate for network
-targets.
+targets and a configurable severity threshold for CI gating.
 
-Security trade-off: We require `--i-am-authorized` for any non-local target so
-that running a scan is always a deliberate, attributable act. JSON output and a
-configurable severity threshold let CI fail builds on real findings.
+Security trade-off: we require `--i-am-authorized` for any non-local target so
+that running a scan is always a deliberate, attributable act. Rendering/exit-code
+logic lives in `report.py` (stdlib) so it is testable without the CLI deps.
 """
 from __future__ import annotations
 
-import json
 import sys
 
 import click
-from rich.console import Console
-from rich.table import Table
 
 from . import checks as _checks  # noqa: F401  (populates the registry)
-from .core import Finding, Severity, registry
-
-console = Console()
+from . import report
+from .core import Severity, registry
 
 
 def _is_network_target(target: str) -> bool:
-    return target.startswith(("http://", "https://"))
+    return target.startswith(("http://", "https://")) or ":" in target.split("/")[0]
 
 
 @click.group()
@@ -35,16 +31,12 @@ def cli() -> None:
 @cli.command("list")
 def list_checks() -> None:
     """List available checks."""
-    table = Table(title="Available checks")
-    table.add_column("name", style="bold")
-    table.add_column("description")
     for check in registry.all():
-        table.add_row(check.name, check.description)
-    console.print(table)
+        click.echo(f"{check.name:16} {check.description}")
 
 
 @cli.command("run")
-@click.option("--target", required=True, help="URL or local path to audit.")
+@click.option("--target", required=True, help="URL, host[:port], or local path.")
 @click.option("--check", "check_name", default=None,
               help="Run a single check by name (default: all).")
 @click.option("--format", "fmt", type=click.Choice(["text", "json"]),
@@ -63,31 +55,11 @@ def run(target: str, check_name: str | None, fmt: str, fail_on: str,
         )
 
     checks = [registry.get(check_name)] if check_name else registry.all()
-    findings: list[Finding] = []
-    for check in checks:
-        findings.extend(check.run(target))
+    findings = [f for check in checks for f in check.run(target)]
 
-    if fmt == "json":
-        console.print_json(json.dumps([
-            {**f.__dict__, "severity": f.severity.name} for f in findings
-        ]))
-    else:
-        _print_report(findings)
-
-    threshold = Severity[fail_on]
-    if any(f.severity >= threshold for f in findings):
-        sys.exit(2)
-
-
-def _print_report(findings: list[Finding]) -> None:
-    table = Table(title="Audit findings")
-    table.add_column("severity")
-    table.add_column("check")
-    table.add_column("title")
-    table.add_column("remediation")
-    for f in sorted(findings, key=lambda x: x.severity, reverse=True):
-        table.add_row(f.severity.name, f.check, f.title, f.remediation)
-    console.print(table)
+    output = report.to_json(findings) if fmt == "json" else report.to_text(findings)
+    click.echo(output)
+    sys.exit(report.exit_code(findings, Severity[fail_on]))
 
 
 if __name__ == "__main__":

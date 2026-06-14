@@ -1,5 +1,5 @@
 # Multi-Cloud Deployment Platform - orchestrator dependencies.
-click>=8.1,<9
-pydantic>=2.7,<3
-pyyaml>=6.0,<7
-jinja2>=3.1,<4
+# The core (spec validation, planner, renderer) is pure stdlib and unit-tested
+# offline. These are only needed for the CLI and YAML file loading.
+click>=8.1,<9      # CLI
+pyyaml>=6.0,<7     # spec file loading (lazily imported)

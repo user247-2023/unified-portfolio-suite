@@ -1,53 +1,22 @@
 """Kafka -> ClickHouse stream processor.
 
-Purpose: Consume raw log events from Kafka, validate/parse them, batch them, and
-insert into ClickHouse. Malformed events are routed to a dead-letter topic.
+Purpose: Consume raw log events from Kafka, validate/parse them (via the pure
+`core` module), batch them, and insert into ClickHouse. Malformed events are
+routed to a dead-letter topic.
 
 Security / correctness trade-offs:
  - Offsets are committed only AFTER a successful insert => at-least-once delivery
    (we prefer duplicates over data loss).
- - Every event is validated before insert; bad events are dead-lettered, never
-   silently dropped and never allowed to crash the consumer loop.
+ - Validation/batching live in `core.py` (pure stdlib, unit-tested); this module
+   only wires them to the real clients, which are imported lazily so the package
+   stays importable without the infra installed.
  - All connection settings come from the environment (no literals).
-
-Performance: events are flushed in batches of BATCH_SIZE or every
-FLUSH_INTERVAL_SECONDS, whichever comes first — amortizing insert cost.
 """
 from __future__ import annotations
 
-import json
 import os
-import time
-from dataclasses import dataclass
 
-
-@dataclass
-class Event:
-    ts: float
-    service: str
-    level: str
-    message: str
-    trace_id: str
-    attributes: dict
-
-
-def parse_event(raw: bytes) -> Event:
-    """Validate and coerce a raw Kafka payload into an Event.
-
-    Raises ValueError on anything malformed so the caller can dead-letter it.
-    """
-    data = json.loads(raw)  # raises on invalid JSON -> dead-letter
-    try:
-        return Event(
-            ts=float(data["ts"]),
-            service=str(data["service"])[:128],
-            level=str(data.get("level", "INFO"))[:16],
-            message=str(data["message"])[:8192],
-            trace_id=str(data.get("trace_id", "")),
-            attributes={str(k): str(v) for k, v in data.get("attributes", {}).items()},
-        )
-    except (KeyError, TypeError, ValueError) as exc:
-        raise ValueError(f"invalid event schema: {exc}") from exc
+from .core import Batcher, Event, parse_event  # noqa: F401  (re-exported)
 
 
 def env(name: str, default: str | None = None) -> str:
@@ -58,15 +27,14 @@ def env(name: str, default: str | None = None) -> str:
 
 
 def run() -> None:  # pragma: no cover - requires live Kafka/ClickHouse
-    """Main consume->batch->insert loop. Imports clients lazily so this module
-    is importable (and unit-testable) without the infra installed."""
+    """Main consume->batch->insert loop."""
     from confluent_kafka import Consumer, Producer
     import clickhouse_connect
 
     consumer = Consumer({
         "bootstrap.servers": env("KAFKA_BOOTSTRAP"),
         "group.id": env("KAFKA_GROUP_ID", "log-processor"),
-        "enable.auto.commit": False,  # we commit only after a successful insert
+        "enable.auto.commit": False,  # commit only after a successful insert
         "auto.offset.reset": "earliest",
     })
     dlq = Producer({"bootstrap.servers": env("KAFKA_BOOTSTRAP")})
@@ -77,28 +45,25 @@ def run() -> None:  # pragma: no cover - requires live Kafka/ClickHouse
     )
 
     consumer.subscribe([env("KAFKA_TOPIC", "logs.raw")])
-    batch_size = int(env("BATCH_SIZE", "1000"))
-    flush_interval = float(env("FLUSH_INTERVAL_SECONDS", "2"))
+    batcher = Batcher(
+        max_size=int(env("BATCH_SIZE", "1000")),
+        max_interval=float(env("FLUSH_INTERVAL_SECONDS", "2")),
+    )
 
-    batch: list[Event] = []
-    last_flush = time.monotonic()
     try:
         while True:
             msg = consumer.poll(0.5)
+            batch = None
             if msg is not None and not msg.error():
                 try:
-                    batch.append(parse_event(msg.value()))
+                    batch = batcher.add(parse_event(msg.value()))
                 except ValueError:
                     dlq.produce(env("KAFKA_DLQ_TOPIC", "logs.deadletter"),
                                 msg.value())
-
-            due = (len(batch) >= batch_size or
-                   time.monotonic() - last_flush >= flush_interval)
-            if batch and due:
+            batch = batch or batcher.tick()
+            if batch:
                 _insert(ch, batch)
                 consumer.commit(asynchronous=False)  # durability checkpoint
-                batch.clear()
-                last_flush = time.monotonic()
     finally:
         consumer.close()
 

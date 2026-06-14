@@ -11,9 +11,17 @@ development, cybersecurity, cloud/DevOps, AI/ML, data engineering, systems
 programming, and networking. Each project is self-contained, independently
 runnable, and built to the same engineering standards.
 
-> **Status:** Scaffolding complete for all 9 projects. The flagship —
-> **Project 09: AI-Powered SOC Platform** — is built out furthest (working
-> log-ingestion service, correlation/triage logic, and dashboard structure).
+> **Status:** All 9 projects now have a **runnable, tested core**. The Python
+> and Node cores are deliberately dependency-free and verified by **71 passing
+> tests** (`python -m unittest` / `node --test`, no installs required); the C
+> project (06) is verified in CI. The flagship — **Project 09: AI-Powered SOC
+> Platform** — remains the deepest (end-to-end log ingestion → correlation →
+> automated triage → SIEM dashboard).
+>
+> **Design principle across the suite:** security-critical/business logic lives
+> in a pure stdlib core (testable anywhere), while frameworks (FastAPI, Fastify,
+> Kafka/ClickHouse clients, Prometheus, FAISS/Ollama) sit at the edges and are
+> imported lazily — so every core is unit-tested without infrastructure.
 
 ## Projects
 

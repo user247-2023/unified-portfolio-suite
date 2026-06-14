@@ -37,7 +37,15 @@ cp .env.example .env
 # edit collector/targets.yaml with hosts YOU operate
 docker compose up --build
 # Grafana → http://localhost:3000   Prometheus → http://localhost:9090
+
+# Run the offline core tests (probe classification + alert rules; pure stdlib):
+python -m unittest discover -s tests -v
 ```
+
+Probe classification, rolling-latency tracking, and alert evaluation live in
+`collector/core.py` (pure stdlib, unit-tested). `collector.py` does the socket
+I/O and metric export, importing `prometheus_client`/`yaml` lazily so the
+decision logic is testable without them.
 
 ## Security Considerations
 
