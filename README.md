@@ -74,7 +74,15 @@ Unified-Portfolio-Suite/
 
 ## Getting started
 
-Each project is independent. `cd` into a project directory and follow its
+Run **every** project's test suite in one command (no installs needed — the
+cores are dependency-free; the C project is skipped locally unless a toolchain
+is present, and is covered in CI):
+
+```bash
+python run_all_tests.py     # or: make test
+```
+
+Each project is also independent. `cd` into a project directory and follow its
 README. Most projects run with one of:
 
 ```bash

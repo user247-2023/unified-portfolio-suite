@@ -9,44 +9,33 @@ import RiskBadge from "./RiskBadge.jsx";
 
 export default function IncidentList({ incidents }) {
   if (!incidents?.length) {
-    return <p style={{ color: "#6b7280" }}>No open incidents. 🎉</p>;
+    return <p className="empty">No open incidents.</p>;
   }
   return (
-    <ul style={{ listStyle: "none", padding: 0, display: "grid", gap: 12 }}>
+    <ul className="incident-list">
       {incidents.map((inc) => (
-        <li
-          key={inc.id}
-          style={{
-            border: "1px solid #e5e7eb",
-            borderRadius: 8,
-            padding: 16,
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <strong>{inc.alert_rules.join(", ")}</strong>
+        <li key={inc.id} className={`incident prio-${(inc.priority || "p4").toLowerCase()}`}>
+          <div className="incident-top">
+            <span className="incident-rules">{inc.alert_rules.join(" · ")}</span>
             <RiskBadge priority={inc.priority} score={inc.risk_score} />
           </div>
-          <div style={{ color: "#6b7280", fontSize: 13, marginTop: 4 }}>
-            Entities: {inc.entities.join(", ")}
-          </div>
+          <div className="incident-entities">entities: {inc.entities.join(", ")}</div>
 
-          <details style={{ marginTop: 8 }}>
-            <summary style={{ cursor: "pointer" }}>Why this score</summary>
+          <details>
+            <summary>Why this score</summary>
             <ul>
               {inc.rationale.map((line, i) => (
-                <li key={i} style={{ fontSize: 13 }}>{line}</li>
+                <li key={i}>{line}</li>
               ))}
             </ul>
           </details>
 
-          <div style={{ marginTop: 8 }}>
-            <strong style={{ fontSize: 13 }}>Recommended actions</strong>
-            <ol>
-              {inc.recommended_actions.map((a, i) => (
-                <li key={i} style={{ fontSize: 13 }}>{a}</li>
-              ))}
-            </ol>
-          </div>
+          <div className="actions-title">Recommended actions</div>
+          <ol>
+            {inc.recommended_actions.map((a, i) => (
+              <li key={i}>{a}</li>
+            ))}
+          </ol>
         </li>
       ))}
     </ul>

@@ -46,6 +46,19 @@ runner against the dependency-free lifecycle domain):
 cd backend && node --test        # or: npm test
 ```
 
+Run the **frontend** standalone (demo mode — an in-memory store mirrors the
+backend domain, so it runs with no API/DB):
+
+```bash
+cd frontend && npm install && npm run dev    # → http://localhost:5174
+```
+
+The console lets you register assets, drive the lifecycle (assign → maintenance
+→ retire), and switch between an **Admin** and **Auditor** role to see RBAC in
+action (auditors can read but every mutating control is disabled). The
+append-only audit trail updates live. The UI only ever offers transitions the
+state machine permits.
+
 The business rules (lifecycle state machine, RBAC default-deny, append-only
 audit trail) live in `backend/src/domain/assets.mjs` as a pure, framework-free
 module. The Fastify routes wrap that domain — keeping the rules testable without

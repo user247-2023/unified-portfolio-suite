@@ -1,0 +1,106 @@
+/*
+ * SIEM dashboard theme.
+ * Purpose: A focused dark "SOC console" look. Uses CSS variables for the
+ * priority palette so colors are defined once and reused by badges and stats.
+ */
+:root {
+  --bg: #0b1220;
+  --panel: #131c2e;
+  --panel-2: #1b2740;
+  --border: #243049;
+  --text: #e6edf6;
+  --muted: #93a1b5;
+  --p1: #ef4444;
+  --p2: #f97316;
+  --p3: #eab308;
+  --p4: #64748b;
+  --accent: #38bdf8;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.app { max-width: 960px; margin: 0 auto; padding: 24px; }
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 16px;
+}
+.app-header h1 { margin: 0; font-size: 22px; letter-spacing: 0.3px; }
+.subtitle { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+
+.source-badge { font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); }
+.source-live { color: #4ade80; }
+.source-demo { color: var(--p3); }
+.source-loading { color: var(--muted); }
+
+/* Summary stats */
+.summary-bar { display: flex; gap: 10px; margin: 18px 0; flex-wrap: wrap; }
+.stat {
+  flex: 1 1 0;
+  min-width: 86px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.stat-value { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.stat-p1 { border-top: 3px solid var(--p1); }
+.stat-p2 { border-top: 3px solid var(--p2); }
+.stat-p3 { border-top: 3px solid var(--p3); }
+.stat-p4 { border-top: 3px solid var(--p4); }
+.stat-risk .stat-value { color: var(--accent); }
+
+.queue-meta {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
+/* Incident cards */
+.incident-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+.incident {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--p4);
+  border-radius: 10px;
+  padding: 16px;
+}
+.incident.prio-p1 { border-left-color: var(--p1); }
+.incident.prio-p2 { border-left-color: var(--p2); }
+.incident.prio-p3 { border-left-color: var(--p3); }
+.incident.prio-p4 { border-left-color: var(--p4); }
+
+.incident-top { display: flex; justify-content: space-between; align-items: center; }
+.incident-rules { font-weight: 600; font-family: ui-monospace, monospace; font-size: 14px; }
+.incident-entities { color: var(--muted); font-size: 13px; margin-top: 4px; font-family: ui-monospace, monospace; }
+
+.badge { color: #fff; padding: 3px 10px; border-radius: 6px; font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.badge-p1 { background: var(--p1); }
+.badge-p2 { background: var(--p2); }
+.badge-p3 { background: var(--p3); color: #1b2740; }
+.badge-p4 { background: var(--p4); }
+
+.incident details { margin-top: 10px; }
+.incident summary { cursor: pointer; color: var(--accent); font-size: 13px; }
+.incident details ul, .incident ol { margin: 6px 0 0; padding-left: 20px; }
+.incident li { font-size: 13px; color: var(--text); margin: 2px 0; }
+.actions-title { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 12px; }
+
+.app-footer { margin-top: 24px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--border); padding-top: 12px; }
+.empty { color: var(--muted); }

@@ -1,0 +1,98 @@
+/*
+ * EAMS frontend theme.
+ * Purpose: A clean, neutral "enterprise admin" look. CSS variables centralize
+ * the status palette used by badges and table accents.
+ */
+:root {
+  --bg: #f5f7fa;
+  --panel: #ffffff;
+  --border: #e2e8f0;
+  --text: #1e293b;
+  --muted: #64748b;
+  --accent: #2563eb;
+  --active: #2563eb;
+  --assigned: #059669;
+  --maintenance: #d97706;
+  --retired: #64748b;
+  --danger: #dc2626;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.app { max-width: 900px; margin: 0 auto; padding: 24px; }
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.app-header h1 { margin: 0; font-size: 22px; }
+.subtitle { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+
+.role-switch { font-size: 13px; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+.role-switch select { padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border); }
+
+.message { padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; }
+.message-error { background: #fef2f2; color: var(--danger); border: 1px solid #fecaca; }
+.message-ok { background: #ecfdf5; color: var(--assigned); border: 1px solid #a7f3d0; }
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-bottom: 18px;
+}
+.panel h2 { margin: 0 0 12px; font-size: 15px; }
+.count {
+  display: inline-block; background: var(--bg); color: var(--muted);
+  border-radius: 999px; padding: 1px 8px; font-size: 12px; margin-left: 6px;
+}
+.hint { color: var(--muted); font-weight: 400; font-size: 12px; }
+
+/* Create form */
+.create-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.create-form input, .create-form select {
+  padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px;
+}
+.create-form input { flex: 1 1 220px; }
+.create-form button, .actions button {
+  padding: 8px 12px; border: none; border-radius: 8px; cursor: pointer;
+  background: var(--accent); color: #fff; font-size: 13px;
+}
+.create-form button:disabled, .actions button:disabled {
+  background: #cbd5e1; cursor: not-allowed;
+}
+
+/* Asset table */
+.asset-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.asset-table th {
+  text-align: left; color: var(--muted); font-weight: 600; font-size: 12px;
+  text-transform: uppercase; letter-spacing: 0.4px; padding: 8px; border-bottom: 1px solid var(--border);
+}
+.asset-table td { padding: 10px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.asset-table .muted { color: var(--muted); }
+.actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.actions button.danger { background: var(--danger); }
+.actions button.danger:disabled { background: #cbd5e1; }
+
+/* Status badges */
+.badge { color: #fff; padding: 2px 9px; border-radius: 999px; font-size: 12px; text-transform: capitalize; }
+.badge-active { background: var(--active); }
+.badge-assigned { background: var(--assigned); }
+.badge-maintenance { background: var(--maintenance); }
+.badge-retired { background: var(--retired); }
+
+/* Audit log */
+.audit-log { margin: 0; padding-left: 18px; font-size: 13px; }
+.audit-log li { margin: 4px 0; }
+.audit-action { font-family: ui-monospace, monospace; font-weight: 600; color: var(--accent); }
+.empty { color: var(--muted); font-size: 14px; }

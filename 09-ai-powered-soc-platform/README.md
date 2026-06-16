@@ -75,6 +75,9 @@ cp .env.example .env          # set a strong INGEST_API_KEY
 docker compose up --build
 # Ingestion API → http://localhost:8000   Dashboard → http://localhost:8080
 
+# Dashboard standalone (renders with demo data, no backend needed):
+cd dashboard && npm install && VITE_DEMO=1 npm run dev   # → http://localhost:5173
+
 # Send events to the API:
 curl -X POST http://localhost:8000/ingest \
   -H "X-API-Key: $INGEST_API_KEY" -H "content-type: application/json" \

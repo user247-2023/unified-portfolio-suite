@@ -2,8 +2,9 @@
  * SIEM dashboard root.
  *
  * Purpose: Top-level view that polls the ingestion service for triaged
- * incidents and renders the prioritized queue. Structure only — styling is
- * intentionally minimal so the data flow is clear.
+ * incidents and renders the prioritized queue with summary stats. Falls back to
+ * demo data (clearly flagged) when no backend is reachable, so the dashboard is
+ * always renderable.
  *
  * Trade-off: short-interval polling keeps the demo simple; a production build
  * would use Server-Sent Events / WebSockets for push and pause polling when the
@@ -11,26 +12,24 @@
  */
 import React, { useEffect, useState } from "react";
 import { fetchIncidents } from "./api.js";
+import SummaryBar from "./components/SummaryBar.jsx";
 import IncidentList from "./components/IncidentList.jsx";
 
 const POLL_MS = 5000;
 
 export default function App() {
   const [incidents, setIncidents] = useState([]);
-  const [error, setError] = useState(null);
+  const [source, setSource] = useState("loading");
+  const [updatedAt, setUpdatedAt] = useState(null);
 
   useEffect(() => {
     let active = true;
     async function load() {
-      try {
-        const data = await fetchIncidents();
-        if (active) {
-          setIncidents(data.incidents ?? []);
-          setError(null);
-        }
-      } catch (e) {
-        if (active) setError(e.message);
-      }
+      const { incidents: data, source: src } = await fetchIncidents();
+      if (!active) return;
+      setIncidents(data);
+      setSource(src);
+      setUpdatedAt(new Date());
     }
     load();
     const id = setInterval(load, POLL_MS);
@@ -41,19 +40,34 @@ export default function App() {
   }, []);
 
   return (
-    <main style={{ maxWidth: 880, margin: "0 auto", padding: 24,
-                   fontFamily: "system-ui, sans-serif" }}>
-      <h1 style={{ fontSize: 22 }}>AI-Powered SOC — Incident Queue</h1>
-      <p style={{ color: "#6b7280" }}>
-        Auto-triaged incidents, most urgent first. Refreshes every{" "}
-        {POLL_MS / 1000}s.
-      </p>
-      {error && (
-        <p style={{ color: "#b91c1c" }}>
-          Could not reach the ingestion API: {error}
-        </p>
-      )}
+    <div className="app">
+      <header className="app-header">
+        <div>
+          <h1>AI-Powered SOC</h1>
+          <p className="subtitle">Automated incident triage queue</p>
+        </div>
+        <div className={`source-badge source-${source}`}>
+          {source === "live" && "● live"}
+          {source === "demo" && "● demo data (no backend)"}
+          {source === "loading" && "○ connecting…"}
+        </div>
+      </header>
+
+      <SummaryBar incidents={incidents} />
+
+      <div className="queue-meta">
+        <span>{incidents.length} open incident(s), most urgent first</span>
+        {updatedAt && (
+          <span>updated {updatedAt.toLocaleTimeString()} · refreshes {POLL_MS / 1000}s</span>
+        )}
+      </div>
+
       <IncidentList incidents={incidents} />
-    </main>
+
+      <footer className="app-footer">
+        Risk scores are explainable (expand “Why this score”). Recommended actions
+        are for analyst/SOAR review — triage never auto-remediates.
+      </footer>
+    </div>
   );
 }

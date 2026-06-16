@@ -1,6 +1,6 @@
 /**
- * Dashboard bootstrap.
- * Purpose: Mount the React SIEM dashboard into the page and load the theme.
+ * EAMS frontend bootstrap.
+ * Purpose: Mount the asset-management console and load the theme.
  */
 import React from "react";
 import { createRoot } from "react-dom/client";
