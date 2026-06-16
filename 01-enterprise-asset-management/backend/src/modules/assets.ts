@@ -1,27 +1,44 @@
-/**
- * Asset feature module.
- *
- * Purpose: Defines the asset registry routes (list, create, retire) with
- * schema-validated input and role-based authorization. Demonstrates the
- * suite-wide pattern: one module = one bounded context with a narrow interface.
- *
- * Security trade-offs:
- *  - Every mutating route requires authentication (preHandler) AND an explicit
- *    role check (default deny). Read routes are auth-gated but role-permissive.
- *  - "Retire" is a state transition, not a hard delete, preserving the audit
- *    trail / chain of custody required for compliance.
- */
+// Asset registry routes.
+//
+// One bounded context: register assets and move them through their lifecycle
+// (active → assigned → maintenance → retired). Mutations require the "admin"
+// role; reads are open to any authenticated user. "Retire" is a terminal state,
+// not a delete, so history is preserved — and every mutation lands in an
+// append-only audit log exposed at GET /audit.
+//
+// The transition rules below mirror the framework-free domain in
+// src/domain/assets.mjs (which has its own `node --test` suite); they're kept in
+// TS here so the route layer is self-contained and easy to run.
 import type { FastifyInstance } from "fastify";
 
-// In a real deployment this is replaced by the Prisma client; kept inline here
-// so the module is illustrative without requiring a live database.
-type Asset = {
+type Status = "active" | "assigned" | "maintenance" | "retired";
+type Category = "hardware" | "software" | "license";
+
+interface Asset {
   id: string;
   name: string;
-  category: "hardware" | "software" | "license";
-  status: "active" | "retired";
+  category: Category;
+  status: Status;
   assignedTo: string | null;
+}
+
+interface AuditEntry {
+  seq: number;
+  ts: number;
+  action: string;
+  actor: string;
+  assetId: string;
+  details: Record<string, unknown>;
+}
+
+const TRANSITIONS: Record<Status, Status[]> = {
+  active: ["assigned", "maintenance", "retired"],
+  assigned: ["active", "maintenance", "retired"],
+  maintenance: ["active", "assigned", "retired"],
+  retired: [],
 };
+
+const canTransition = (from: Status, to: Status) => TRANSITIONS[from].includes(to);
 
 const createAssetSchema = {
   body: {
@@ -31,60 +48,85 @@ const createAssetSchema = {
     properties: {
       name: { type: "string", minLength: 1, maxLength: 200 },
       category: { type: "string", enum: ["hardware", "software", "license"] },
-      assignedTo: { type: ["string", "null"], maxLength: 200 },
     },
   },
 } as const;
 
-function hasRole(request: any, role: string): boolean {
-  // JWT payload carries roles; default-deny if the claim is absent.
-  const roles: string[] = request.user?.roles ?? [];
-  return roles.includes(role);
-}
+const assignSchema = {
+  body: {
+    type: "object",
+    required: ["user"],
+    additionalProperties: false,
+    properties: { user: { type: "string", minLength: 1, maxLength: 200 } },
+  },
+} as const;
+
+const isAdmin = (request: any): boolean =>
+  (request.user?.roles ?? []).includes("admin"); // default-deny
 
 export async function registerAssetRoutes(app: FastifyInstance) {
   const assets = new Map<string, Asset>();
+  const audit: AuditEntry[] = [];
+  let seq = 0;
 
-  app.get(
-    "/assets",
-    { preHandler: [(app as any).authenticate] },
-    async () => ({ assets: [...assets.values()] }),
-  );
+  const log = (action: string, actor: string, assetId: string, details: Record<string, unknown> = {}) => {
+    audit.push({ seq: ++seq, ts: Date.now(), action, actor, assetId, details });
+  };
 
-  app.post(
-    "/assets",
-    { schema: createAssetSchema, preHandler: [(app as any).authenticate] },
-    async (request, reply) => {
-      if (!hasRole(request, "admin")) {
-        return reply.code(403).send({ error: "forbidden" });
-      }
-      const body = request.body as Omit<Asset, "id" | "status">;
-      const asset: Asset = {
-        id: crypto.randomUUID(),
-        status: "active",
-        assignedTo: body.assignedTo ?? null,
-        name: body.name,
-        category: body.category,
-      };
-      assets.set(asset.id, asset);
-      return reply.code(201).send(asset);
-    },
-  );
+  // Seed data so a freshly-started server (and the wired frontend) has something
+  // to show. Recorded in the audit log just like any other mutation.
+  const seed = (name: string, category: Category): Asset => {
+    const asset: Asset = { id: crypto.randomUUID(), name, category, status: "active", assignedTo: null };
+    assets.set(asset.id, asset);
+    log("create", "system", asset.id, { name, category });
+    return asset;
+  };
+  const laptop = seed('MacBook Pro 16"', "hardware");
+  laptop.status = "assigned";
+  laptop.assignedTo = "alice@corp";
+  log("assign", "system", laptop.id, { user: "alice@corp" });
+  seed("Adobe CC license", "license");
 
-  // Retire = soft state change. Append-only audit trail is preserved.
-  app.post(
-    "/assets/:id/retire",
-    { preHandler: [(app as any).authenticate] },
-    async (request, reply) => {
-      if (!hasRole(request, "admin")) {
-        return reply.code(403).send({ error: "forbidden" });
-      }
-      const { id } = request.params as { id: string };
-      const asset = assets.get(id);
+  const auth = (app as any).authenticate;
+
+  app.get("/assets", { preHandler: [auth] }, async () => ({
+    assets: [...assets.values()],
+  }));
+
+  app.get("/audit", { preHandler: [auth] }, async () => ({
+    audit: [...audit].reverse(), // newest first
+  }));
+
+  app.post("/assets", { schema: createAssetSchema, preHandler: [auth] }, async (request, reply) => {
+    if (!isAdmin(request)) return reply.code(403).send({ error: "forbidden" });
+    const { name, category } = request.body as { name: string; category: Category };
+    const asset: Asset = { id: crypto.randomUUID(), name, category, status: "active", assignedTo: null };
+    assets.set(asset.id, asset);
+    log("create", (request as any).user?.sub ?? "unknown", asset.id, { name, category });
+    return reply.code(201).send(asset);
+  });
+
+  // Generic lifecycle transition handler, reused by the action routes below.
+  // `mutate` also gets the request so handlers like "assign" can read the body.
+  function transition(action: string, to: Status, mutate: (a: Asset, request: any) => void) {
+    return async (request: any, reply: any) => {
+      if (!isAdmin(request)) return reply.code(403).send({ error: "forbidden" });
+      const asset = assets.get(request.params.id);
       if (!asset) return reply.code(404).send({ error: "not_found" });
-      asset.status = "retired";
-      asset.assignedTo = null;
+      if (!canTransition(asset.status, to)) {
+        return reply.code(409).send({ error: `illegal transition ${asset.status} -> ${to}` });
+      }
+      mutate(asset, request);
+      asset.status = to;
+      log(action, request.user?.sub ?? "unknown", asset.id, request.body ?? {});
       return asset;
-    },
-  );
+    };
+  }
+
+  app.post("/assets/:id/assign", { schema: assignSchema, preHandler: [auth] },
+    transition("assign", "assigned", (a, request) => { a.assignedTo = request.body.user; }));
+  app.post("/assets/:id/maintenance", { preHandler: [auth] },
+    transition("maintenance", "maintenance", (a) => { a.assignedTo = null; }));
+  app.post("/assets/:id/retire", { preHandler: [auth] },
+    transition("retire", "retired", (a) => { a.assignedTo = null; }));
 }

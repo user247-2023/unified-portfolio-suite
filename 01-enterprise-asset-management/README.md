@@ -46,18 +46,39 @@ runner against the dependency-free lifecycle domain):
 cd backend && node --test        # or: npm test
 ```
 
-Run the **frontend** standalone (demo mode — an in-memory store mirrors the
-backend domain, so it runs with no API/DB):
+Run the **frontend**. It probes the API on startup: if the backend is up it
+talks to it **live** (using a dev session token); otherwise it falls back to an
+in-memory **demo** store that mirrors the same rules, so it always runs. The
+badge in the header shows which mode you're in.
 
 ```bash
-cd frontend && npm install && npm run dev    # → http://localhost:5174
+# Standalone (demo mode — no backend needed):
+cd frontend && npm install && npm run dev          # → http://localhost:5174
+
+# Wired to the live API (start the backend first):
+#   1) backend:  JWT_SECRET=dev NODE_ENV=development npm run dev   (port 4000)
+#   2) frontend: npm run dev                                       (auto-detects it)
 ```
 
 The console lets you register assets, drive the lifecycle (assign → maintenance
 → retire), and switch between an **Admin** and **Auditor** role to see RBAC in
-action (auditors can read but every mutating control is disabled). The
-append-only audit trail updates live. The UI only ever offers transitions the
-state machine permits.
+action (auditors can read, but mutations are rejected — the API returns 403 and
+the demo store throws the same way). The append-only audit trail updates live,
+and the UI only ever offers transitions the state machine permits.
+
+### API endpoints (used by the frontend)
+
+| Method & path | Auth | Purpose |
+|---|---|---|
+| `POST /auth/dev-token` | — (dev only) | Mint a role token for local development |
+| `GET /assets` | any user | List assets |
+| `GET /audit` | any user | Append-only audit trail (newest first) |
+| `POST /assets` | admin | Register an asset |
+| `POST /assets/:id/assign` | admin | Assign to a user |
+| `POST /assets/:id/maintenance` | admin | Move to maintenance |
+| `POST /assets/:id/retire` | admin | Retire (terminal) |
+
+CORS is restricted to `CORS_ORIGINS` (default the local frontend origin).
 
 The business rules (lifecycle state machine, RBAC default-deny, append-only
 audit trail) live in `backend/src/domain/assets.mjs` as a pure, framework-free

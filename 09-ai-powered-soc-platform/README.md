@@ -78,6 +78,16 @@ docker compose up --build
 # Dashboard standalone (renders with demo data, no backend needed):
 cd dashboard && npm install && VITE_DEMO=1 npm run dev   # → http://localhost:5173
 
+# Dashboard wired to the LIVE API (point it at the ingestion service + key):
+cd dashboard && VITE_API_URL=http://localhost:8000 VITE_API_KEY=$INGEST_API_KEY npm run dev
+```
+
+The dashboard reads `GET /incidents` with the `X-API-Key` header and falls back
+to demo data only if the API is unreachable (the status badge shows `live` vs
+`demo`). The API enables CORS for the dashboard origin — set `CORS_ORIGINS`
+(comma-separated) to allow your deployed dashboard's origin.
+
+```bash
 # Send events to the API:
 curl -X POST http://localhost:8000/ingest \
   -H "X-API-Key: $INGEST_API_KEY" -H "content-type: application/json" \

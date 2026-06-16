@@ -37,8 +37,14 @@ body {
 .app-header h1 { margin: 0; font-size: 22px; }
 .subtitle { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
 
+.header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
 .role-switch { font-size: 13px; color: var(--muted); display: flex; gap: 8px; align-items: center; }
 .role-switch select { padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border); }
+
+.source-badge { font-size: 12px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border); }
+.source-live { color: #059669; }
+.source-demo { color: #d97706; }
+.source-connecting { color: var(--muted); }
 
 .message { padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; }
 .message-error { background: #fef2f2; color: var(--danger); border: 1px solid #fecaca; }

@@ -1,72 +1,79 @@
 /**
  * EAMS frontend root.
  *
- * Purpose: The asset-management console — register assets, drive their
- * lifecycle, switch between an admin and an auditor role to demonstrate RBAC,
- * and watch the append-only audit trail update in real time.
- *
- * Demo mode: state lives in an in-memory store that mirrors the backend domain
- * (same state machine, RBAC, audit rules), so the app runs standalone. Errors
- * raised by the domain (authorization, illegal transition) are surfaced to the
- * user exactly as the API would.
+ * Register assets, drive their lifecycle, and switch between an admin and an
+ * auditor role to see RBAC in action. On startup it probes the API: if the
+ * backend is up it talks to it live (with a dev session token); otherwise it
+ * falls back to an in-memory store that mirrors the same rules, so the app runs
+ * standalone. The status badge shows which mode you're in. Errors raised by
+ * either backend (authorization, illegal transition) surface the same way.
  */
-import React, { useMemo, useRef, useState } from "react";
-import { AssetStore } from "./store.js";
+import React, { useEffect, useState } from "react";
+import { chooseBackend } from "./api.js";
 import AssetTable from "./components/AssetTable.jsx";
 import CreateAssetForm from "./components/CreateAssetForm.jsx";
 import AuditLog from "./components/AuditLog.jsx";
 
-const ROLES = {
-  admin: { id: "u_admin", roles: ["admin"], label: "Admin" },
-  auditor: { id: "u_auditor", roles: ["auditor"], label: "Auditor (read-only)" },
-};
-
 export default function App() {
-  const storeRef = useRef(null);
-  if (storeRef.current === null) storeRef.current = new AssetStore();
-  const store = storeRef.current;
-
-  const [roleKey, setRoleKey] = useState("admin");
-  const [tick, setTick] = useState(0); // bump to re-read the store
+  const [backend, setBackend] = useState(null);
+  const [mode, setMode] = useState("connecting");
+  const [role, setRole] = useState("admin");
+  const [assets, setAssets] = useState([]);
+  const [audit, setAudit] = useState([]);
   const [message, setMessage] = useState(null);
 
-  const actor = ROLES[roleKey];
-  const canEdit = actor.roles.includes("admin");
+  const canEdit = role === "admin";
 
-  const assets = useMemo(() => store.list(), [store, tick]);
-  const audit = useMemo(() => store.audit(), [store, tick]);
+  // Pick a backend (live API or demo store) once on startup.
+  useEffect(() => {
+    let active = true;
+    chooseBackend().then(async (b) => {
+      if (!active) return;
+      setBackend(b);
+      setMode(b.mode);
+      await reload(b);
+    });
+    return () => { active = false; };
+  }, []);
 
-  function refresh() {
-    setTick((t) => t + 1);
+  async function reload(b = backend) {
+    if (!b) return;
+    setAssets(await b.list());
+    setAudit(await b.audit());
   }
 
-  function run(fn) {
+  async function run(fn, okText) {
     try {
-      fn();
-      setMessage(null);
+      await fn();
+      setMessage(okText ? { type: "ok", text: okText } : null);
     } catch (err) {
       setMessage({ type: "error", text: err.message });
     } finally {
-      refresh();
+      await reload();
+    }
+  }
+
+  async function changeRole(next) {
+    setRole(next);
+    if (backend) {
+      await backend.setRole(next);
+      await reload();
     }
   }
 
   function handleCreate(input) {
-    run(() => {
-      const a = store.create(actor, input);
-      setMessage({ type: "ok", text: `Created ${a.name}.` });
-    });
+    run(() => backend.create(input), `Created ${input.name}.`);
   }
 
   function handleAction(action, asset) {
     if (action === "assign") {
       const user = window.prompt(`Assign "${asset.name}" to which user?`, "bob@corp");
       if (user === null) return;
-      run(() => store.assign(actor, asset.id, user));
+      run(() => backend.assign(asset.id, user));
     } else if (action === "maintenance") {
-      run(() => store.sendToMaintenance(actor, asset.id));
+      run(() => backend.maintenance(asset.id));
     } else if (action === "retire") {
-      run(() => store.retire(actor, asset.id));
+      run(() => backend.retire(asset.id));
     }
   }
 
@@ -75,16 +82,22 @@ export default function App() {
       <header className="app-header">
         <div>
           <h1>Enterprise Asset Management</h1>
-          <p className="subtitle">Track assets across their lifecycle · demo (in-memory) mode</p>
+          <p className="subtitle">Track assets across their lifecycle</p>
         </div>
-        <label className="role-switch">
-          Acting as:
-          <select value={roleKey} onChange={(e) => setRoleKey(e.target.value)}>
-            {Object.entries(ROLES).map(([k, r]) => (
-              <option key={k} value={k}>{r.label}</option>
-            ))}
-          </select>
-        </label>
+        <div className="header-right">
+          <span className={`source-badge source-${mode}`}>
+            {mode === "live" && "● live API"}
+            {mode === "demo" && "● demo (in-memory)"}
+            {mode === "connecting" && "○ connecting…"}
+          </span>
+          <label className="role-switch">
+            Acting as:
+            <select value={role} onChange={(e) => changeRole(e.target.value)}>
+              <option value="admin">Admin</option>
+              <option value="auditor">Auditor (read-only)</option>
+            </select>
+          </label>
+        </div>
       </header>
 
       {message && (

@@ -17,8 +17,10 @@ Run locally (from the project root, so `shared`/`services` are importable):
 from __future__ import annotations
 
 import hmac
+import os
 
 from fastapi import Depends, FastAPI, Header, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from shared.config import settings
@@ -27,6 +29,18 @@ from .pipeline import Pipeline
 
 app = FastAPI(title="AI-Powered SOC — Ingestion", version="0.1.0")
 pipeline = Pipeline()
+
+# The dashboard is a separate origin, so the browser needs CORS to call us.
+# Allowed origins are configurable; default to the local dashboard ports.
+_cors_origins = os.environ.get(
+    "CORS_ORIGINS", "http://localhost:5173,http://localhost:8080"
+).split(",")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in _cors_origins if o.strip()],
+    allow_methods=["GET", "POST"],
+    allow_headers=["*"],
+)
 
 MAX_BATCH = 1000
 

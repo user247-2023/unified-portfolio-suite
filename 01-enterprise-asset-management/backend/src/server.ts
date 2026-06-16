@@ -16,6 +16,7 @@
  */
 import Fastify from "fastify";
 import fastifyJwt from "@fastify/jwt";
+import fastifyCors from "@fastify/cors";
 import { registerAssetRoutes } from "./modules/assets.js";
 
 function requireEnv(name: string): string {
@@ -36,6 +37,14 @@ export async function buildServer() {
 
   await app.register(fastifyJwt, { secret: requireEnv("JWT_SECRET") });
 
+  // The SPA is served from a different origin, so allow it via CORS.
+  // CORS_ORIGINS is a comma-separated allowlist; default to the local frontend.
+  await app.register(fastifyCors, {
+    origin: (process.env.CORS_ORIGINS ?? "http://localhost:5174")
+      .split(",")
+      .map((o) => o.trim()),
+  });
+
   // Authentication decorator: routes call `request.jwtVerify()` via preHandler.
   app.decorate("authenticate", async (request: any, reply: any) => {
     try {
@@ -46,6 +55,22 @@ export async function buildServer() {
   });
 
   app.get("/health", async () => ({ status: "ok" }));
+
+  // Dev-only helper: mint a short-lived token for a role so the SPA can
+  // authenticate without a full identity provider in local development.
+  // Disabled outside development — production uses real SSO/login.
+  if (process.env.NODE_ENV !== "production") {
+    app.post("/auth/dev-token", async (request, reply) => {
+      const role = (request.body as { role?: string })?.role === "auditor"
+        ? "auditor"
+        : "admin";
+      const token = app.jwt.sign(
+        { sub: `dev_${role}`, roles: [role] },
+        { expiresIn: "8h" },
+      );
+      return reply.send({ token, role });
+    });
+  }
 
   await registerAssetRoutes(app);
 
